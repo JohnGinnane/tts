@@ -9,9 +9,9 @@ namespace tts
     {
         static void Main(string[] args)
         {
-            wave test = new wave(2, 11025);
-            //test.generateSquare(440f, 0.5f, 15000);
-            test.generateSine(261.63, length: 15 * 1000);
+            wave test = new wave(2, 11025 * 4);
+            test.generateSquare(440f, 0.5f, 15000);
+            //test.generateSine(261.63, length: 15 * 1000);
             test.saveToWAV("test.wav");
             Console.ReadKey();
         }
@@ -90,13 +90,13 @@ namespace tts
             bw.Dispose();
         }
 
-        public void generateSine(double frequency = 440.0f, float volume = 0.5f, uint length = 1000)
+        public void generateSine(double frequency = 440.0f, float volume = 0.5f, uint length = 1000, bool square = false)
         {
             // http://pages.mtu.edu/~suits/notefreqs.html
             // https://blogs.msdn.microsoft.com/dawate/2009/06/24/intro-to-audio-programming-part-3-synthesizing-simple-wave-audio-using-c/
             double t = (Math.PI * 2 * frequency) / (sampleRate * numChannels);
             uint samples = (uint)(sampleRate * (double)(length / 1000.0f));
-            data = new int[samples * numChannels];
+            data = new int[samples];
             int ampOffset = 0;
             int amplitude = 0;
 
@@ -114,51 +114,21 @@ namespace tts
             {
                 for (short channel = 0; channel < numChannels; channel++)
                 {
-                    data[i + channel] = Convert.ToInt16(ampOffset + amplitude * Math.Sin(t * i));
+                    if (square)
+                    {
+                        data[i + channel] = Convert.ToInt16(ampOffset + amplitude * Math.Sign(Math.Sin(t * i)));
+                    }
+                    else
+                    {
+                        data[i + channel] = Convert.ToInt16(ampOffset + amplitude * Math.Sin(t * i));
+                    }
                 }
             }
         }
 
         public void generateSquare(float frequency = 440.0f, float volume = 0.5f, uint length = 1000)
         {
-            volume = Math.Abs(volume);
-            int i = 0;
-            uint samples = (uint)(sampleRate * (double)(length / 1000.0f));
-            Console.WriteLine(samples.ToString());
-            
-            int[] data;
-            data = new int[samples];
-            int min = 0;
-            int max = 0;
-            if (bitsPerSample == 8)
-            {
-                min = (int)((float)byte.MaxValue / 2.0f - (float)byte.MaxValue * volume / 2.0f);
-                max = (int)((float)byte.MaxValue / 2.0f + (float)byte.MaxValue * volume / 2.0f);
-            } else if (bitsPerSample == 16)
-            {
-                min = (int)((float)short.MinValue * volume);
-                max = (int)((float)short.MaxValue * volume);
-            }
-            
-            // 11,025 / 440 = 25.057
-            // if i % 25.057 >= (25.057 / 2) then HIGH else LOW
-            float freqMod = (float)sampleRate / frequency;
-
-            while (i < samples)
-            {
-                if ((float)i % freqMod > freqMod / 2.0f)
-                {
-                    data[i] = min;
-                } else
-                {
-                    data[i] = max;
-                }
-                //Console.WriteLine(i.ToString() + " - " + data[i].ToString());
-                
-                i++;
-            }
-
-            this.data = data;
+            generateSine(frequency, volume, length, true);
         }
     }
 
